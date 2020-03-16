@@ -70,7 +70,7 @@ jack_port_register_exn{cl}(client, name, ptype, pflags, flags)
         = jack_port_register( client, cstring(name), cstring(ptype), pflags, flags )
 
       val () 
-        = assert_errmsg( pp > the_null_ptr, "Could not open JACK MIDI port")
+        = assert_errmsg( pp > the_null_ptr, "Could not register JACK port")
 
       prval Some_v(pfp) = pfp
       

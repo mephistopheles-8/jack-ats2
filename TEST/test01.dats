@@ -26,6 +26,7 @@ implement main0 () =
       = jack_client_open_exn("test01", JackNullOption, status )
 
     var state = the_null_ptr    
+
     prval () = jack_client_own( client, state )
    
     val x = jack_set_process_callback( client, process, state )
