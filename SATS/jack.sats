@@ -27,6 +27,7 @@ castfn string_cstring( string ) : cstring
 overload string with cstring_string
 overload cstring with string_cstring
 
+
 macdef JACK_LIB_EXPORT = $extval(ulint,"JACK_LIB_EXPORT")
 macdef JACK_OPTIONAL_WEAK_EXPORT = $extval(ulint,"JACK_OPTIONAL_WEAK_EXPORT")
 macdef JACK_POSITION_MASK = $extval(ulint,"JACK_POSITION_MASK")
@@ -36,7 +37,6 @@ macdef JACK_MAX_FRAMES = $extval(ulint,"JACK_MAX_FRAMES")
 macdef JACK_LOAD_INIT_LIMIT = $extval(ulint,"JACK_LOAD_INIT_LIMIT")
 macdef JACK_DEFAULT_AUDIO_TYPE = $extval(string,"JACK_DEFAULT_AUDIO_TYPE")
 macdef JACK_OPTIONAL_WEAK_DEPRECATED_EXPORT = $extval(ulint,"JACK_OPTIONAL_WEAK_DEPRECATED_EXPORT")
-
 
 (**
  ** [Modeling Ownership]
@@ -64,7 +64,8 @@ absview jack_process_stopped(l:addr)
 
 absvtype jack_owned(l:addr,a:vtype) = a
 
-praxi jack_owned_elim{l:addr}{a:vtype}( !jack_client_closed(l) | !jack_owned(l,a) >> a ) : void 
+castfn jack_owned_elim_rval{a:vtype}{l:addr}( jack_client_closed(l) | jack_owned(l,a) ) : a 
+praxi jack_owned_elim_lval{a:vtype}{l:addr}( jack_client_closed(l) | !jack_owned(l,a) >> a ) : void 
 
 absview JACK_PROCESS
 
@@ -74,27 +75,44 @@ typedef jack_uuid_t = $extype"jack_uuid_t"
 
 typedef jack_shmsize_t = $extype"jack_shmsize_t"
 
-typedef jack_nframes_t(n:int) = $extype"jack_nframes_t"
+abst@ype jack_nframes_t(n:int) = $extype"jack_nframes_t"
+
 typedef jack_nframes_t = [n:nat] jack_nframes_t(n)
+
 
 typedef jack_time_t = $extype"jack_time_t"
 
 typedef jack_intclient_t = $extype"jack_intclient_t"
 
-//absview jack_port_v(l:addr)
-abstype jack_port_t = cPtr0( $extype"jack_port_t" )
+(** Really, ports are managed by the client.  You can unregister but you
+    Don't really need to.  You cannot use the port after the client is freed. **)
+absview jack_port_v(cl:addr,l:addr)
+abstype jack_port_t(cl:addr,l:addr) = cPtr0( $extype"jack_port_t" )
+vtypedef jack_port_t(cl:addr) = [l:addr | l > null] jack_port_t(cl,l)
+vtypedef jack_port_t = [cl,l:agz] jack_port_t(cl,l)
 
-//castfn jack_port_encode{l:addr}( jack_port_v(l) | ptr l ) : jack_port_t
-//castfn jack_port_decode( jack_port_t ) : [l:addr] ( jack_port_v(l) | ptr l ) 
+castfn jack_port_encode{cl,l:addr}( jack_port_v(cl,l) | ptr l ) : jack_port_t(cl,l)
+castfn jack_port_decode{cl,l:addr}( jack_port_t(cl,l) ) : ( jack_port_v(cl,l) | ptr l ) 
+
+praxi jack_port_elim{cl,l:addr}{a:vtype}( jack_client_closed(cl) | jack_port_t(cl,l) ) : void 
+
 
 absview jack_client_v(l:addr)
 absvtype jack_client_t(l:addr) = cPtr0( $extype"jack_client_t" )
-vtypedef jack_client_t = [l:addr] jack_client_t(l)
+vtypedef jack_client_t = [l:agz] jack_client_t(l)
 
-castfn jack_client_encode{l:addr}( jack_client_v(l) | ptr l ) : jack_client_t
+castfn jack_client_encode{l:addr}( jack_client_v(l) | ptr l ) : jack_client_t(l)
 castfn jack_client_decode( jack_client_t ) : [l:addr] ( jack_client_v(l) | ptr l ) 
 
-praxi jack_client_own{l:addr}{a:vtype}( !jack_client_t(l), !a >> jack_owned(l,a) ) : void
+castfn jack_client_v_own_rval{l:addr}{a:vtype}( !jack_client_v(l) |  a ) : jack_owned(l,a)
+praxi jack_client_v_own_lval{l:addr}{a:vtype}( !jack_client_v(l) |  !a >> jack_owned(l,a) ) : void
+praxi jack_client_t_own_lval{l:addr}{a:vtype}( !jack_client_t(l) , !a >> jack_owned(l,a) ) : void
+
+symintr jack_client_own
+overload jack_client_own with jack_client_v_own_rval
+overload jack_client_own with jack_client_v_own_lval
+overload jack_client_own with jack_client_t_own_lval
+
 
 typedef jack_port_id_t = $extype"jack_port_id_t"
 
@@ -185,6 +203,12 @@ typedef JackShutdownCallback(a:vtype) = (!a) -> void
 typedef JackInfoShutdownCallback(a:vtype) = (jack_status_t, cstring, !a) -> void
 
 typedef jack_default_audio_sample_t = $extype"jack_default_audio_sample_t"
+
+castfn jack_sample_float ( jack_default_audio_sample_t ) : float
+castfn jack_sample_double ( jack_default_audio_sample_t ) : double
+castfn float_jack_sample( float ) : jack_default_audio_sample_t
+castfn double_jack_sample ( double ) : jack_default_audio_sample_t
+
 
 abst@ype enum_JackPortFlags = $extype"enum JackPortFlags"
 
@@ -297,7 +321,8 @@ fun jack_get_version(&int? >> int, &int? >> int, &int? >> int, &int? >> int) : v
 
 fun jack_get_version_string() : cstring = "mac#"
 
-fun jack_client_open(cstring, jack_options_t, &jack_status_t? >> jack_status_t) : jack_client_t = "mac#"
+fun jack_client_open(cstring, jack_options_t, &jack_status_t? >> jack_status_t) 
+  : [l:addr] (option_v(jack_client_v(l),l > null) | ptr l) = "mac#"
 
 (*
 fun jack_client_new(cstring) : jack_client_t = "mac#"
@@ -333,35 +358,35 @@ fun jack_cycle_wait(!jack_client_t) : jack_nframes_t = "mac#"
 
 fun jack_cycle_signal(!jack_client_t, int) : void = "mac#"
 
-fun jack_set_process_thread{a:vtype}{l:addr}(!jack_client_t, JackThreadCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_process_thread{a:vtype}{l:addr}(!jack_client_t(l), JackThreadCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_thread_init_callback{a:vtype}{l:addr}(!jack_client_t, JackThreadInitCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_thread_init_callback{a:vtype}{l:addr}(!jack_client_t(l), JackThreadInitCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_on_shutdown{a:vtype}{l:addr}(!jack_client_t, JackShutdownCallback(a), !jack_owned(l,a)) : void = "mac#"
+fun jack_on_shutdown{a:vtype}{l:addr}(!jack_client_t(l), JackShutdownCallback(a), !jack_owned(l,a)) : void = "mac#"
 
-fun jack_on_info_shutdown{a:vtype}{l:addr}(!jack_client_t, JackInfoShutdownCallback(a), !jack_owned(l,a)) : void = "mac#"
+fun jack_on_info_shutdown{a:vtype}{l:addr}(!jack_client_t(l), JackInfoShutdownCallback(a), !jack_owned(l,a)) : void = "mac#"
 
-fun jack_set_process_callback{a:vtype}{l:addr}(!jack_client_t, JackProcessCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_process_callback{a:vtype}{l:addr}(!jack_client_t(l), JackProcessCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_freewheel_callback{a:vtype}{l:addr}(!jack_client_t, JackFreewheelCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_freewheel_callback{a:vtype}{l:addr}(!jack_client_t(l), JackFreewheelCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_buffer_size_callback{a:vtype}{l:addr}(!jack_client_t, JackBufferSizeCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_buffer_size_callback{a:vtype}{l:addr}(!jack_client_t(l), JackBufferSizeCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_sample_rate_callback{a:vtype}{l:addr}(!jack_client_t, JackSampleRateCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_sample_rate_callback{a:vtype}{l:addr}(!jack_client_t(l), JackSampleRateCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_client_registration_callback{a:vtype}{l:addr}(!jack_client_t, JackClientRegistrationCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_client_registration_callback{a:vtype}{l:addr}(!jack_client_t(l), JackClientRegistrationCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_port_registration_callback{a:vtype}{l:addr}(!jack_client_t, JackPortRegistrationCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_port_registration_callback{a:vtype}{l:addr}(!jack_client_t(l), JackPortRegistrationCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_port_connect_callback{a:vtype}{l:addr}(!jack_client_t, JackPortConnectCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_port_connect_callback{a:vtype}{l:addr}(!jack_client_t(l), JackPortConnectCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_port_rename_callback{a:vtype}{l:addr}(!jack_client_t, JackPortRenameCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_port_rename_callback{a:vtype}{l:addr}(!jack_client_t(l), JackPortRenameCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_graph_order_callback{a:vtype}{l:addr}(!jack_client_t, JackGraphOrderCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_graph_order_callback{a:vtype}{l:addr}(!jack_client_t(l), JackGraphOrderCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_xrun_callback{a:vtype}{l:addr}(!jack_client_t, JackXRunCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_xrun_callback{a:vtype}{l:addr}(!jack_client_t(l), JackXRunCallback(a), !jack_owned(l,a)) : int = "mac#"
 
-fun jack_set_latency_callback{a:vtype}{l:addr}(!jack_client_t, JackLatencyCallback(a), !jack_owned(l,a)) : int = "mac#"
+fun jack_set_latency_callback{a:vtype}{l:addr}(!jack_client_t(l), JackLatencyCallback(a), !jack_owned(l,a)) : int = "mac#"
 
 fun jack_set_freewheel(!jack_client_t, int) : int = "mac#"
 
@@ -375,11 +400,13 @@ fun jack_engine_takeover_timebase(!jack_client_t) : int = "mac#"
 
 fun jack_cpu_load(!jack_client_t) : float = "mac#"
 
-fun jack_port_register(!jack_client_t, string, string, enum_JackPortFlags, ulint) : jack_port_t = "mac#"
+fun jack_port_register{cl:addr}(!jack_client_t(cl), cstring, cstring, enum_JackPortFlags, ulint) 
+  : [l:addr] (option_v(jack_port_v(cl,l),l > null) | ptr l) = "mac#"
 
-fun jack_port_unregister(!jack_client_t, !jack_port_t >> ptr) : int = "mac#"
+fun jack_port_unregister(!jack_client_t, jack_port_t) : int = "mac#"
 
-fun jack_port_get_buffer(!jack_port_t, jack_nframes_t) : ptr = "mac#"
+fun jack_port_get_buffer{n:nat}(!jack_port_t, jack_nframes_t(n)) 
+  : [l:agz] ( array(jack_default_audio_sample_t,n) @ l, (array(jack_default_audio_sample_t,n) @ l) -<prf> void | ptr l ) = "mac#"
 
 fun jack_port_uuid(!jack_port_t) : jack_uuid_t = "mac#"
 
