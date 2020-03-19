@@ -36,7 +36,7 @@ implement main0 () =
 
     val _ = sleep( 10 )
 
-    val (pf | x) = jack_client_close( client )
+    val (pf | x) = jack_client_close_exn( client )
 
     prval () = jack_owned_elim_lval( pf | state )
 

@@ -50,4 +50,10 @@ fun {} jack_port_register_option{cl:agz}(
   , ptype: string
   , pflags: enum_JackPortFlags
   , flags: ulint
-  ) : [b:bool] Option_vt(jack_port_t(cl)) 
+  ) : [b:bool] Option_vt(jack_port_t(cl))
+
+fun {} jack_client_close_exn{cl:agz}(
+    client: jack_client_t(cl)
+  ) : (jack_client_closed(cl) | void)
+
+ 

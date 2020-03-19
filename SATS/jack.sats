@@ -328,7 +328,8 @@ fun jack_client_open(cstring, jack_options_t, &jack_status_t? >> jack_status_t)
 fun jack_client_new(cstring) : jack_client_t = "mac#"
 *)
 
-fun jack_client_close{l:addr}(jack_client_t(l)) : (jack_client_closed(l) | int) = "mac#"
+fun jack_client_close{l:addr}( !jack_client_t(l) >> opt(jack_client_t(l),n != 0)) 
+  : #[n:int] (option_v(jack_client_closed(l),n == 0) | int n) = "mac#"
 
 fun jack_client_name_size() : int = "mac#"
 
@@ -406,7 +407,7 @@ fun jack_port_register{cl:addr}(!jack_client_t(cl), cstring, cstring, enum_JackP
 fun jack_port_unregister(!jack_client_t, jack_port_t) : int = "mac#"
 
 fun jack_port_get_buffer{n:nat}(!jack_port_t, jack_nframes_t(n)) 
-  : [l:agz] ( array(jack_default_audio_sample_t,n) @ l, (array(jack_default_audio_sample_t,n) @ l) -<prf> void | ptr l ) = "mac#"
+  : [l:agz] ( array(jack_default_audio_sample_t,n) @ l, (array(jack_default_audio_sample_t,n) @ l) -<lin,prf> void | ptr l ) = "mac#"
 
 fun jack_port_uuid(!jack_port_t) : jack_uuid_t = "mac#"
 

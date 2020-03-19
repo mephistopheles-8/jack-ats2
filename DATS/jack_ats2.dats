@@ -19,11 +19,11 @@ jack_client_open_opt( name, opts, status, client )
     in if cp > the_null_ptr 
        then let
            prval Some_v(pfc) = pfc
-          val () =  client := jack_client_encode( pfc | cp )
+           val () =  client := jack_client_encode( pfc | cp )
            prval () = opt_some( client )
          in true
         end
-      else let
+       else let
            prval None_v() = pfc
            prval () = opt_none( client )
         in false
@@ -40,7 +40,7 @@ jack_client_open_option( name, opts, status)
            prval Some_v(pfc) = pfc
          in Some_vt( jack_client_encode( pfc | cp ) )
         end
-      else let
+       else let
            prval None_v() = pfc
         in None_vt()
        end
@@ -90,7 +90,7 @@ jack_port_register_opt{cl}( client, name, ptype, pflags, flags, port )
            prval () = opt_some( port )
          in true
         end
-      else let
+       else let
            prval None_v() = pfp
            prval () = opt_none( port )
         in false
@@ -107,8 +107,24 @@ jack_port_register_option{cl}(client, name, ptype, pflags, flags)
            prval Some_v(pfp) = pfp
          in Some_vt( jack_port_encode( pfp | pp ) )
         end
-      else let
+       else let
            prval None_v() = pfp
         in None_vt()
        end
    end
+
+implement {}
+jack_client_close_exn{cl}( client ) 
+  = let
+      val (popt | err) 
+        = jack_client_close( client )
+
+      val () = assert_errmsg( err = 0, "Could not close JACK client" )
+
+      prval () = opt_unnone( client )
+
+      prval Some_v(pclosed) = popt
+
+     in ( pclosed | () )
+    end
+
