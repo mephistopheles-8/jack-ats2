@@ -79,6 +79,8 @@ abst@ype jack_nframes_t(n:int) = $extype"jack_nframes_t"
 
 typedef jack_nframes_t = [n:nat] jack_nframes_t(n)
 
+castfn jack_nframes_int{n:nat}( jack_nframes_t(n) ) : int n
+castfn jack_nframes_size{n:nat}( jack_nframes_t(n) ) : size_t n
 
 typedef jack_time_t = $extype"jack_time_t"
 
