@@ -19,7 +19,7 @@ jack_client_open_opt( name, opts, status, client )
     in if cp > the_null_ptr 
        then let
            prval Some_v(pfc) = pfc
-           val () =  client := jack_client_encode( pfc | cp )
+           val () = client := jack_client_encode( pfc | cp )
            prval () = opt_some( client )
          in true
         end

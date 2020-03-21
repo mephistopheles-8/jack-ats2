@@ -42,7 +42,7 @@ praxi getbuf( !ptr buf )
   : (array_v(jack_sample_t,buf,BUFSZ), (array_v(jack_sample_t,buf,BUFSZ)) -<lin,prf> void)
 
 implement main0 () = 
-  println!("Hello [test01]") where {
+  println!("Hello [test02]") where {
 
     var status : jack_status_t?
 
